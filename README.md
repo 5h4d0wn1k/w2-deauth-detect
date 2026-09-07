@@ -76,19 +76,43 @@ This project is provided for **educational and authorized security testing purpo
 - Security education and training
 
 ### Prohibited Use
-- Intercepting communications on networks you don't own
-- Attacking infrastructure without authorization
+- Deploying this defense on networks you don't own without written authorization
+- Transmitting deauth frames with any tooling derived from this repository
 - Any activity that violates applicable laws or regulations
 - Commercial use without proper licensing
 
-### No Warranty
-This software is provided "AS IS" without warranty of any kind. The author is not responsible for any misuse or damage caused by this software.
+### Regulatory Framework
+- **Federal Communications Act (47 U.S.C. § 333)**: Willful interference with authorized radio communications is prohibited — this defense never emits radio.
+- **47 CFR Part 15**: Unauthorized intentional radiators are regulated; this detector parses bytes only.
+- **CFAA / ECPA / Wiretap Act**: Monitoring wireless traffic without authorization may violate federal interception and computer-access laws.
 
-### Responsible Disclosure
-If you discover vulnerabilities using this tool, follow responsible disclosure practices:
-1. Report to the vendor/owner privately
-2. Allow reasonable time for remediation
-3. Do not exploit beyond proof of concept
+## Live Lab Test Plan
+
+Offline (this repo, no radio):
+1. `python3 firmware/deauth_detect.py` — synthesise the 16-deauth hit fixture (storm +
+   locally-administered + broadcast-source forgeries) and detect all three (exit 0).
+2. `python3 firmware/deauth_detect.py --gen-fixture reports/hit.pcap --pcap reports/hit.pcap
+   --json reports/w2.json --threshold 5` — fixture round-trip + report (exit 0).
+3. `python3 -m unittest discover -s tests` — byte-exact FCS/reason/address tests (exit 0).
+
+Authorized lab (defender only):
+4. Capture 60s of authorized lab traffic; feed pcap to `--pcap`, confirm storm thresholds and
+   forged-SOURCE signatures match the lab's real APs.
+5. `green = permitted`: passive deauth analysis on devices you own; injecting deauth is never
+   part of this tool (a red-team repo is the place for that).
+
+## Metrics
+
+- Deauth parse (byte-exact): FC subtype verify, DA/SA/BSSID, seq, reason code, FCS verify
+- Storm detection: per (da, sa) sliding window (default 1s) >= threshold (default 5) -> high
+- Forgery signatures: broadcast SA (high), broadcast DA (medium), locally-administered SA not
+  in the allowed-AP set (medium)
+- Deterministic hit fixture: 16 deauth frames, lab MACs only, RETRY-flagged storm
+- pcap classic (linktype 105) generate + analyze; captures/ and reports/ gitignored
+- Defensive posture: radio_emitted always False; no deauth frames ever transmitted
+
+- Test suite: `python3 -m unittest discover -s tests`
+- Reports: `reports/` (gitignored)
 
 ## License
 
